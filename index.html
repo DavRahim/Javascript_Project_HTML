@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Paint App with Shapes</title>
+  <style>
+    body {
+      text-align: center;
+      font-family: sans-serif;
+      margin: 20px;
+      background-color: #f5f5f5;
+    }
+
+    canvas {
+      border: 2px solid #333;
+      background-color: #fff;
+      cursor: crosshair;
+      touch-action: none;
+    }
+
+    .controls {
+      margin: 15px;
+    }
+
+    input[type="color"], input[type="range"] {
+      margin: 5px;
+    }
+
+    button {
+      padding: 10px 15px;
+      margin: 5px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      background-color: #444;
+      color: white;
+      cursor: pointer;
+    }
+
+    button.active {
+      background-color: green;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🎨 Paint App with Shape Drawing</h1>
+
+  <div class="controls">
+    <label>✏️ রঙ:</label>
+    <input type="color" id="colorPicker" value="#000000">
+
+    <label>🔘 ব্রাশ সাইজ:</label>
+    <input type="range" id="brushSize" min="1" max="30" value="5">
+
+    <br>
+
+    <button onclick="setTool('draw')" id="drawBtn" class="active">✏️ Draw</button>
+    <button onclick="setTool('eraser')" id="eraserBtn">🧽 Eraser</button>
+    <button onclick="setTool('rectangle')" id="rectBtn">🔳 Rectangle</button>
+    <button onclick="setTool('circle')" id="circleBtn">🔵 Circle</button>
+
+    <br>
+
+    <button onclick="undo()">↩️ Undo</button>
+    <button onclick="clearCanvas()">🗑️ Clear</button>
+    <button onclick="saveImage()">💾 Save</button>
+  </div>
+
+  <canvas id="canvas" width="800" height="500"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const colorPicker = document.getElementById('colorPicker');
+    const brushSize = document.getElementById('brushSize');
+    const drawBtn = document.getElementById('drawBtn');
+    const eraserBtn = document.getElementById('eraserBtn');
+    const rectBtn = document.getElementById('rectBtn');
+    const circleBtn = document.getElementById('circleBtn');
+
+    let painting = false;
+    let tool = 'draw';
+    let history = [];
+    let startX = 0, startY = 0;
+
+    function setTool(selectedTool) {
+      tool = selectedTool;
+      [drawBtn, eraserBtn, rectBtn, circleBtn].forEach(btn => btn.classList.remove('active'));
+      if (tool === 'draw') drawBtn.classList.add('active');
+      if (tool === 'eraser') eraserBtn.classList.add('active');
+      if (tool === 'rectangle') rectBtn.classList.add('active');
+      if (tool === 'circle') circleBtn.classList.add('active');
+    }
+
+    function getPosition(e) {
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      const y = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
+      return { x, y };
+    }
+
+    function startPosition(e) {
+      saveState(); 
+      painting = true;
+      const pos = getPosition(e);
+      startX = pos.x;
+      startY = pos.y;
+
+      if (tool === 'draw') {
+        drawLine(pos);
+      }
+    }
+
+    function endPosition(e) {
+      if (!painting) return;
+      painting = false;
+      const endPos = getPosition(e);
+
+      if (tool === 'rectangle') {
+        const width = endPos.x - startX; 
+        const height = endPos.y - startY;
+        ctx.lineWidth = brushSize.value;
+        ctx.strokeStyle = colorPicker.value;
+        ctx.strokeRect(startX, startY, width, height);
+      } else if (tool === 'circle') {
+        const radius = Math.sqrt(
+          Math.pow(endPos.x - startX, 2) + Math.pow(endPos.y - startY, 2)
+        );
+        ctx.lineWidth = brushSize.value;
+        ctx.strokeStyle = colorPicker.value;
+        ctx.beginPath();
+        ctx.arc(startX, startY, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.beginPath(); // reset path
+    }
+
+    function drawLine(e) {
+      if (!painting || (tool !== 'draw' && tool !== 'eraser')) return;
+
+      const pos = getPosition(e);
+      ctx.lineWidth = brushSize.value;
+      ctx.lineCap = "round";
+      ctx.strokeStyle = tool === 'eraser' ? "#FFFFFF" : colorPicker.value;
+
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    }
+
+    function draw(e) {
+      if (tool === 'draw' || tool === 'eraser') {
+        drawLine(e);
+      }
+    }
+
+    function clearCanvas() {
+      saveState();
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveImage() {
+      const link = document.createElement('a');
+      link.download = 'drawing.png';
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    function saveState() {
+      if (history.length > 50) history.shift(); // limit history size
+      history.push(ctx.getImageData(0, 0, canvas.width, canvas.height));
+    }
+
+    function undo() {
+      if (history.length > 0) {
+        const lastState = history.pop();
+        ctx.putImageData(lastState, 0, 0);
+      }
+    }
+
+    // Mouse Events
+    canvas.addEventListener('mousedown', startPosition);
+    canvas.addEventListener('mouseup', endPosition);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseleave', endPosition);
+
+    // Touch Support
+    canvas.addEventListener('touchstart', startPosition);
+    canvas.addEventListener('touchend', endPosition);
+    canvas.addEventListener('touchmove', draw);
+  </script>
+
+</body>
+</html>
