@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🔐 PIN Protected Bank App</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f6f9;
+        padding: 20px;
+        max-width: 600px;
+        margin: auto;
+      }
+      h2 {
+        text-align: center;
+        color: #2c3e50;
+      }
+      .section {
+        background: #fff;
+        padding: 16px;
+        margin-bottom: 20px;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      }
+      input,
+      button,
+      select {
+        width: 100%;
+        padding: 10px;
+        margin-top: 8px;
+        font-size: 1rem;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+      }
+      button {
+        background-color: #2980b9;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #1f6391;
+      }
+      pre,
+      .history {
+        background: #f0f0f0;
+        padding: 10px;
+        border-radius: 6px;
+        white-space: pre-line;
+      }
+      .hidden {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>🔐 Bank App with PIN Login</h2>
+
+    <div class="section" id="createAccount">
+      <h3>Create Account</h3>
+      <input type="text" id="name" placeholder="Your Name" />
+      <input type="password" id="pin" placeholder="4-digit PIN" maxlength="4" />
+      <button onclick="createAccount()">Create</button>
+    </div>
+
+    <div class="section" id="loginSection">
+      <h3>Login to Your Account</h3>
+      <select id="loginAccount"></select>
+      <input
+        type="password"
+        id="loginPin"
+        placeholder="Enter PIN"
+        maxlength="4"
+      />
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div class="section hidden" id="dashboard">
+      <h3>Welcome, <span id="userName"></span>!</h3>
+      <input type="number" id="amount" placeholder="Amount" />
+      <button onclick="deposit()">Deposit</button>
+      <button onclick="withdraw()">Withdraw</button>
+
+      <h4>Account Summary</h4>
+      <pre id="summary"></pre>
+
+      <h4>Transaction History</h4>
+      <div class="history" id="historyBox"></div>
+
+      <button style="margin-top: 15px; background: #c0392b" onclick="logout()">
+        Logout
+      </button>
+    </div>
+
+    <script>
+      class Account {
+        constructor(name, pin) {
+          this.name = name;
+          this.pin = pin;
+          this.balance = 0;
+          this.accountNumber = "AC" + Math.floor(1000 + Math.random() * 9000);
+          this.transactions = [];
+        }
+
+        deposit(amount) {
+          this.balance += amount;
+          this.transactions.push({
+            type: "Deposit",
+            amount,
+            date: new Date().toLocaleString(),
+          });
+          saveAccounts();
+        }
+
+        withdraw(amount) {
+          if (amount <= this.balance) {
+            this.balance -= amount;
+            this.transactions.push({
+              type: "Withdraw",
+              amount,
+              date: new Date().toLocaleString(),
+            });
+            saveAccounts();
+          } else {
+            alert("Insufficient balance");
+          }
+        }
+
+        getSummary() {
+          return `Name: ${this.name}\nAccount No: ${this.accountNumber}\nBalance: ৳${this.balance}`;
+        }
+
+        getHistory() {
+          if (this.transactions.length === 0) return "No transactions yet.";
+          return this.transactions
+            .map((t) => `${t.date} - ${t.type}: ৳${t.amount}`)
+            .join("\n");
+        }
+      }
+
+      let accounts = [];
+      let currentAccount = null;
+
+      console.log(accounts.length);
+
+
+      function saveAccounts() {
+        localStorage.setItem("accounts", JSON.stringify(accounts));
+      }
+
+      function loadAccounts() {
+        const data = localStorage.getItem("accounts");
+        if (data) {
+          accounts = JSON.parse(data).map((acc) => {
+            const obj = new Account(acc.name, acc.pin);
+            obj.balance = acc.balance;
+            obj.accountNumber = acc.accountNumber;
+            obj.transactions = acc.transactions;
+            return obj;
+          });
+        }
+        updateAccountSelect();
+      }
+
+      function createAccount() {
+        const name = document.getElementById("name").value.trim();
+        const pin = document.getElementById("pin").value.trim();
+
+        if (!name || pin.length !== 4 || isNaN(pin)) {
+          alert("Enter valid name and 4-digit PIN.");
+          return;
+        }
+
+        accounts.push(new Account(name, pin));
+        saveAccounts();
+        updateAccountSelect();
+        document.getElementById("name").value = "";
+        document.getElementById("pin").value = "";
+        alert("Account created successfully!");
+        document.getElementById("createAccount").classList.add("hidden");
+      }
+
+      function updateAccountSelect() {
+        const loginSelect = document.getElementById("loginAccount");
+        loginSelect.innerHTML = "";
+        accounts.forEach((acc, index) => {
+          const option = document.createElement("option");
+          option.value = index;
+          option.textContent = `${acc.name} (${acc.accountNumber})`;
+          loginSelect.appendChild(option);
+        });
+      }
+
+      function login() {
+        const index = document.getElementById("loginAccount").value;
+        const pin = document.getElementById("loginPin").value.trim();
+
+        const acc = accounts[index];
+        if (acc && acc.pin === pin) {
+          currentAccount = acc;
+          document.getElementById("userName").textContent = acc.name;
+          showDashboard();
+          document.getElementById("loginPin").value = "";
+          document.getElementById("loginSection").classList.add("hidden");
+        } else {
+          alert("Incorrect PIN.");
+        }
+      }
+
+      function logout() {
+        currentAccount = null;
+        document.getElementById("dashboard").classList.add("hidden");
+        document.getElementById("loginSection").classList.remove("hidden");
+        document.getElementById("createAccount").classList.remove("hidden");
+      }
+
+      function showDashboard() {
+        document.getElementById("dashboard").classList.remove("hidden");
+        updateSummary();
+      }
+
+      function updateSummary() {
+        if (!currentAccount) return;
+        document.getElementById("summary").textContent =
+          currentAccount.getSummary();
+        document.getElementById("historyBox").textContent =
+          currentAccount.getHistory();
+      }
+
+      function deposit() {
+        const amt = parseFloat(document.getElementById("amount").value);
+        if (isNaN(amt) || amt <= 0) {
+          alert("Enter a valid amount.");
+          return;
+        }
+        currentAccount.deposit(amt);
+        updateSummary();
+        document.getElementById("amount").value = "";
+      }
+
+      function withdraw() {
+        const amt = parseFloat(document.getElementById("amount").value);
+        if (isNaN(amt) || amt <= 0) {
+          alert("Enter a valid amount.");
+          return;
+        }
+        currentAccount.withdraw(amt);
+        updateSummary();
+        document.getElementById("amount").value = "";
+      }
+
+      window.onload = loadAccounts;
+    </script>
+  </body>
+</html>
