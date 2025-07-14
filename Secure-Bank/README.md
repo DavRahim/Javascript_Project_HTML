@@ -17,6 +17,7 @@ A simple and responsive Bank Account management system built using only HTML, CS
 📱 Fully mobile responsive design (works on any screen size)
 
 📷 Screenshots
+<img width="746" height="865" alt="Screenshot 2025-07-14 205050" src="https://github.com/user-attachments/assets/b91d9922-2a7e-471c-8cd0-f083b961df7c" />
 
 
 🚀 Getting Started
